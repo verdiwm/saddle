@@ -1,13 +1,22 @@
 [package]
-name = "sgabello"
+name = "stool"
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["Federico Maria Morrone <contact@morrone.dev>"]
 description = "Async seat manager"
 readme = "README.md"
-documentation = "https://docs.rs/sgabello"
-repository = "https://github.com/verdiwm/sgabello"
+documentation = "https://docs.rs/stool"
+repository = "https://github.com/verdiwm/stool"
 include = ["src/**/*.rs", "README.md", "LICENSE"]
 
+[dev-dependencies]
+anyhow = "1.0.86"
+rustix = { version = "0.38.34", features = ["process"] }
+tokio = { version = "1.38.1", features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "tracing-log"] }
+
 [dependencies]
+futures-util = { version = "0.3.30", default-features = false }
+reconciler = "0.0.2"
+zbus = { version = "4.3.1", default-features = false, features = ["tokio"] }
