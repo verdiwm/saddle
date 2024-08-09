@@ -1,10 +1,10 @@
 [package]
 name = "saddle"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["Federico Maria Morrone <contact@morrone.dev>"]
-description = "Async seat manager"
+description = "Async seat managment made easy"
 readme = "README.md"
 documentation = "https://docs.rs/saddle"
 repository = "https://github.com/verdiwm/saddle"
@@ -15,7 +15,10 @@ anyhow = "1.0.86"
 crossbeam = "0.8.4"
 rustix = { version = "0.38.34", features = ["process", "fs"] }
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "tracing-log"] }
+tracing-subscriber = { version = "0.3.18", features = [
+    "env-filter",
+    "tracing-log",
+] }
 colpetto = { version = "0.0.3", path = "../colpetto" }
 tokio-stream = "0.1.15"
 tracing = "0.1.40"
