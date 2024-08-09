@@ -1,13 +1,13 @@
 [package]
-name = "stool"
+name = "saddle"
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["Federico Maria Morrone <contact@morrone.dev>"]
 description = "Async seat manager"
 readme = "README.md"
-documentation = "https://docs.rs/stool"
-repository = "https://github.com/verdiwm/stool"
+documentation = "https://docs.rs/saddle"
+repository = "https://github.com/verdiwm/saddle"
 include = ["src/**/*.rs", "README.md", "LICENSE"]
 
 [dev-dependencies]
