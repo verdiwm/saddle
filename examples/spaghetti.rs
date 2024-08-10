@@ -1,64 +1,22 @@
 use std::{
-    ffi::{c_int, CStr, CString},
-    process::exit,
-    sync::atomic::AtomicBool,
+    ffi::{c_int, CString},
     time::Duration,
 };
 
 use anyhow::Result as AnyResult;
 use colpetto::{sys, Libinput};
 use futures_util::{StreamExt, TryStreamExt};
-use reconciler::EventListener;
+use reconciler::handler::EventHandler;
 use rustix::{
-    fd::{AsFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
-    fs::{self, Mode, OFlags},
-    process::{geteuid, getpid},
+    fd::{BorrowedFd, IntoRawFd, OwnedFd},
+    fs,
+    process::getpid,
 };
-use saddle::login1::{
-    manager::ManagerProxy,
-    seat::SeatProxy,
-    session::{PauseDeviceArgs, SessionProxy},
-};
+use saddle::login1::{manager::ManagerProxy, seat::SeatProxy, session::SessionProxy};
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{debug, error};
 use zbus::Connection;
-
-#[derive(Debug)]
-pub enum SessionEvent {
-    SessionNew,
-    SessionRemoved,
-}
-
-#[derive(Debug)]
-pub enum SeatEvent {
-    SessionChanged,
-}
-
-#[derive(Debug)]
-pub enum Combined {
-    Session(SessionEvent),
-    Seat(SeatEvent),
-}
-
-impl From<SessionEvent> for Combined {
-    fn from(value: SessionEvent) -> Self {
-        Self::Session(value)
-    }
-}
-
-impl From<SeatEvent> for Combined {
-    fn from(value: SeatEvent) -> Self {
-        Self::Seat(value)
-    }
-}
-
-#[derive(Debug)]
-pub enum Event {
-    Paused,
-    Resumed,
-    DevicePaused,
-}
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
@@ -80,19 +38,12 @@ async fn main() -> AnyResult<()> {
 
     let seat = SeatProxy::new(&connection, seat_object).await?;
 
-    let active = dbg!(session.active().await?);
-
-    let mut active = AtomicBool::new(active);
-
-    // seat.switch_to(1).await?;
-    let mut controlling = false;
-
     session
         .take_control(false)
         .await
         .expect("Failed to take control of session");
 
-    controlling = true;
+    let controlling = true;
 
     println!("Creating channels");
 
@@ -189,15 +140,18 @@ async fn main() -> AnyResult<()> {
 
     let mut event_stream = libinput.event_stream()?;
 
-    // tokio::spawn({
-    //     let session = session.clone();
+    // FAILSAFE
+    tokio::spawn({
+        let session = session.clone();
 
-    //     async move {
-    //         sleep(Duration::from_secs(20)).await;
+        async move {
+            sleep(Duration::from_secs(20)).await;
 
-    //         let _ = session.release_control().await;
-    //     }
-    // });
+            let _ = session.release_control().await;
+        }
+    });
+
+    let _event_handler = EventHandler::new();
 
     while let Some(event) = event_stream.try_next().await? {
         dbg!(&event);
@@ -205,7 +159,6 @@ async fn main() -> AnyResult<()> {
             colpetto::Event::Keyboard(_) => {
                 if controlling {
                     println!("Switching");
-                    // session.release_control().await?;
                     seat.switch_to(1).await?;
                 }
             }
