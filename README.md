@@ -18,6 +18,11 @@ backend, which is compatible with both `logind` and `elogind` systems.
 
 In the future, we plan to extend support to the `seatd` IPC interface,
 
+## Example usage
+
+While this crate is still in development you can find some horrible code you
+shouldn't actually use [here](examples/spaghetti.rs)
+
 ## License
 
 This project is licensed under the
