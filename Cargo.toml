@@ -12,7 +12,7 @@ include = ["src/**/*.rs", "README.md", "LICENSE"]
 
 [dependencies]
 futures-util = { version = "0.3.30", default-features = false }
-reconciler = "0.0.2"
+reconciler = "0.0.3"
 zbus = { version = "4.4.0", default-features = false, features = ["tokio"] }
 
 [dev-dependencies]
