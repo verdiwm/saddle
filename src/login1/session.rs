@@ -1,15 +1,12 @@
 //! # D-Bus interface proxy for: `org.freedesktop.login1.Session`
 use zbus::proxy;
-#[proxy(
-    interface = "org.freedesktop.login1.Session",
-    default_service = "org.freedesktop.login1"
-)]
-trait Session {
+#[proxy(interface = "org.freedesktop.login1.Session", assume_defaults = true)]
+pub trait Session {
     /// Activate method
     fn activate(&self) -> zbus::Result<()>;
 
     /// Kill method
-    fn kill(&self, who: &str, signal_number: i32) -> zbus::Result<()>;
+    fn kill(&self, whom: &str, signal_number: i32) -> zbus::Result<()>;
 
     /// Lock method
     fn lock(&self) -> zbus::Result<()>;
@@ -81,6 +78,14 @@ trait Session {
     /// Audit property
     #[zbus(property)]
     fn audit(&self) -> zbus::Result<u32>;
+
+    /// CanIdle property
+    #[zbus(property)]
+    fn can_idle(&self) -> zbus::Result<bool>;
+
+    /// CanLock property
+    #[zbus(property)]
+    fn can_lock(&self) -> zbus::Result<bool>;
 
     /// Class property
     #[zbus(property)]
