@@ -24,6 +24,6 @@ tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
     "tracing-log",
 ] }
-colpetto = { version = "0.0.3", path = "../colpetto" }
+colpetto = "0.0.5"
 tokio-stream = "0.1.17"
 tracing = "0.1.41"
