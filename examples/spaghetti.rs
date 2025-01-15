@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Result as AnyResult;
-use colpetto::{sys, Libinput};
+use colpetto::Libinput;
 use futures_util::{StreamExt, TryStreamExt};
 use reconciler::handler::EventHandler;
 use rustix::{
@@ -96,23 +96,24 @@ async fn main() -> AnyResult<()> {
 
     println!("Creating libinput");
 
-    let libinput = Libinput::new(
+    let mut libinput = Libinput::new(
         move |path, _| {
-            debug!("Opening fd at path {}", path.to_string_lossy());
-            ask_sx.send(path.to_owned()).unwrap();
-            let res = respond_rx.recv().unwrap();
+            if ask_sx.send(path.to_owned()).is_ok() {
+                if let Ok(res) = respond_rx.recv() {
+                    return Ok(res);
+                }
+            }
 
-            res
+            Err(-1)
         },
         move |fd| {
-            debug!("Closing fd: {fd}");
             let _ = close_sx.send(fd);
         },
     )?;
 
     println!("Assigning seat");
 
-    libinput.assign_seat(CString::new(seat_name).unwrap().as_c_str())?;
+    libinput.udev_assign_seat(&CString::new(seat_name)?)?;
 
     println!("Starting loop");
 
@@ -128,10 +129,10 @@ async fn main() -> AnyResult<()> {
                 if let Ok(active) = active.get().await {
                     if active {
                         debug!("Resuming libinput");
-                        unsafe { sys::libinput_resume(libinput.as_raw()) };
+                        let _ = libinput.resume(); // FIXME: error handling
                     } else {
                         debug!("Suspending libinput");
-                        unsafe { sys::libinput_suspend(libinput.as_raw()) };
+                        libinput.suspend();
                     }
                 }
             }
