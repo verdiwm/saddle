@@ -104,7 +104,7 @@ async fn main() -> AnyResult<()> {
                 }
             }
 
-            Err(-1)
+            Err(-103)
         },
         move |fd| {
             let _ = close_sx.send(fd);
