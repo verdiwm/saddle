@@ -33,6 +33,5 @@ raw-window-handle = "0.6.2"
 diretto = "0.0.4"
 
 [patch.crates-io]
-wgpu = { git = "https://github.com/verdiwm/wgpu", branch = "drm-support" }
-raw-window-handle = { git = "https://github.com/verdiwm/raw-window-handle", branch = "drm-connector" }
-colpetto = { path = "../colpetto" }
+wgpu = { git = "https://github.com/verdiwm/wgpu", branch = "drm-support-v2" }
+# colpetto = { path = "../colpetto" }
