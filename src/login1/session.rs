@@ -1,6 +1,11 @@
 //! # D-Bus interface proxy for: `org.freedesktop.login1.Session`
 use zbus::proxy;
-#[proxy(interface = "org.freedesktop.login1.Session", assume_defaults = true)]
+#[proxy(
+    interface = "org.freedesktop.login1.Session",
+    gen_blocking = false,
+    default_service = "org.freedesktop.login1",
+    assume_defaults = false
+)]
 pub trait Session {
     /// Activate method
     fn activate(&self) -> zbus::Result<()>;

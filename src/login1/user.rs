@@ -1,6 +1,11 @@
 //! # D-Bus interface proxy for: `org.freedesktop.login1.User`
 use zbus::proxy;
-#[proxy(interface = "org.freedesktop.login1.User", assume_defaults = true)]
+#[proxy(
+    interface = "org.freedesktop.login1.User",
+    gen_blocking = false,
+    default_service = "org.freedesktop.login1",
+    assume_defaults = false
+)]
 pub trait User {
     /// Kill method
     fn kill(&self, signal_number: i32) -> zbus::Result<()>;
