@@ -224,9 +224,9 @@ dependencies = [
 
 [[package]]
 name = "colpetto"
-version = "0.1.5"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dda3763477f4ed1a5ee8a2fcd079e8b0a74efecac567d3f6cc636bb4a9c875b2"
+checksum = "8d4f26a81e05bf78b3a8db7f4ec9fd1e5ef798206d23c3655c783829390cbefa"
 dependencies = [
  "cc",
  "devil",
@@ -340,13 +340,12 @@ dependencies = [
 
 [[package]]
 name = "diretto"
-version = "0.0.4"
+version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a266db747ae7b35aec48ef13ff9dd19d7d016ce911baf58b95ec98b468ea123"
+checksum = "bb0d1e8bb45542b790cbfda9137a81626282b453ff2d0bdcecd1663333913df7"
 dependencies = [
- "drm-sys",
+ "bitflags 2.8.0",
  "rustix",
- "tracing",
 ]
 
 [[package]]
@@ -356,16 +355,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95249b50c6c185bee49034bcb378a49dc2b5dff0be90ff6616d31d64febab05d"
 dependencies = [
  "litrs",
-]
-
-[[package]]
-name = "drm-sys"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bafb66c8dbc944d69e15cfcc661df7e703beffbaec8bd63151368b06c5f9858c"
-dependencies = [
- "libc",
- "linux-raw-sys 0.6.5",
 ]
 
 [[package]]
@@ -728,12 +717,6 @@ name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
-
-[[package]]
-name = "linux-raw-sys"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a385b1be4e5c3e362ad2ffa73c392e53f031eaa5b7d648e64cd87f27f6063d7"
 
 [[package]]
 name = "litrs"
@@ -1134,7 +1117,7 @@ dependencies = [
  "bitflags 2.8.0",
  "errno",
  "libc",
- "linux-raw-sys 0.4.15",
+ "linux-raw-sys",
  "windows-sys 0.59.0",
 ]
 
