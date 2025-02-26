@@ -1,7 +1,13 @@
-use std::os::fd::OwnedFd;
+use std::{
+    ffi::CString,
+    io,
+    os::fd::{AsFd, BorrowedFd, OwnedFd},
+    path::Path,
+};
 
 use futures_core::Stream;
 use login1::{manager::ManagerProxy, seat::SeatProxy, session::SessionProxy};
+use rustix::fs;
 use tokio_stream::StreamExt;
 use tracing::debug;
 use zbus::Connection;
@@ -14,6 +20,14 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     #[error("{0}")]
     Zbus(#[from] zbus::Error),
+    #[error("{0}")]
+    Io(#[from] io::Error),
+}
+
+impl From<rustix::io::Errno> for Error {
+    fn from(value: rustix::io::Errno) -> Self {
+        Self::Io(value.into())
+    }
 }
 
 #[derive(Clone)]
@@ -79,15 +93,39 @@ impl Seat {
         Ok(())
     }
 
-    pub async fn open_device(&self, major: u32, minor: u32) -> Result<OwnedFd> {
+    pub async fn open_device<D: AsDevice>(&self, device: D) -> Result<OwnedFd> {
+        let (major, minor) = device.as_device()?;
+
         let (fd, _) = self.session.take_device(major, minor).await?;
 
         Ok(fd.into())
     }
 
-    pub async fn close_device(&self, major: u32, minor: u32) -> Result<()> {
+    pub async fn close_device<D: AsDevice>(&self, device: D) -> Result<()> {
+        let (major, minor) = device.as_device()?;
+
         self.session.release_device(major, minor).await?;
 
         Ok(())
+    }
+}
+
+pub unsafe trait AsDevice {
+    fn as_device(&self) -> Result<(u32, u32)>;
+}
+
+unsafe impl AsDevice for CString {
+    fn as_device(&self) -> Result<(u32, u32)> {
+        let stat = fs::stat(self)?;
+
+        Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+    }
+}
+
+unsafe impl AsDevice for BorrowedFd<'_> {
+    fn as_device(&self) -> Result<(u32, u32)> {
+        let stat = fs::fstat(self)?;
+
+        Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
     }
 }
