@@ -295,6 +295,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "input-linux-sys"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b91b2248b0eaf0a576ef5e60b7f2107a749e705a876bc0b9fe952ac8d83a724"
+dependencies = [
+ "libc",
+ "nix",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -536,6 +546,7 @@ version = "0.0.2"
 dependencies = [
  "anyhow",
  "colpetto",
+ "input-linux-sys",
  "rustix",
  "thiserror",
  "tokio",

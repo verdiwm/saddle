@@ -6,7 +6,11 @@ use std::{
 };
 
 use anyhow::Result;
-use colpetto::{Libinput, event::AsRawEvent};
+use colpetto::{
+    Libinput,
+    event::{AsRawEvent, KeyboardEvent},
+};
+use input_linux_sys::{KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_ESC};
 use saddle::Seat;
 use tokio::{
     pin,
@@ -117,13 +121,24 @@ async fn main() -> Result<()> {
         );
 
         match event.event_type {
-            EventType::Keyboard => {
+            EventType::Keyboard(key) => {
                 // Check if we have control
                 if *has_control.read().unwrap() {
-                    info!("Keyboard event received, switching to VT 2");
-
-                    if let Err(e) = seat.switch_session(2).await {
-                        error!("Failed to switch to VT 2: {}", e);
+                    match key as c_int {
+                        KEY_1 => switch(&seat, 1).await?,
+                        KEY_2 => switch(&seat, 2).await?,
+                        KEY_3 => switch(&seat, 3).await?,
+                        KEY_4 => switch(&seat, 4).await?,
+                        KEY_5 => switch(&seat, 5).await?,
+                        KEY_6 => switch(&seat, 6).await?,
+                        KEY_7 => switch(&seat, 7).await?,
+                        KEY_8 => switch(&seat, 8).await?,
+                        KEY_9 => switch(&seat, 9).await?,
+                        KEY_ESC => {
+                            info!("Exiting...");
+                            libinput_signal_handle.send(LibinputSignal::Shutdown)?;
+                        }
+                        _ => {}
                     }
                 } else {
                     debug!("Keyboard event received but we don't have control");
@@ -133,7 +148,15 @@ async fn main() -> Result<()> {
         }
     }
 
-    libinput_signal_handle.send(LibinputSignal::Shutdown)?;
+    Ok(())
+}
+
+async fn switch(seat: &Seat, session: u32) -> Result<()> {
+    info!("Keyboard event received, switching to VT {session}");
+
+    if let Err(e) = seat.switch_session(session).await {
+        error!("Failed to switch to VT 2: {}", e);
+    }
 
     Ok(())
 }
@@ -147,14 +170,16 @@ struct Event {
 
 #[derive(Debug)]
 enum EventType {
-    Keyboard,
+    Keyboard(u32),
     Unknown,
 }
 
 impl From<&colpetto::Event> for EventType {
     fn from(value: &colpetto::Event) -> Self {
         match value {
-            colpetto::Event::Keyboard(_) => EventType::Keyboard,
+            colpetto::Event::Keyboard(KeyboardEvent::Key(event)) => {
+                EventType::Keyboard(event.key())
+            }
             _ => EventType::Unknown,
         }
     }
