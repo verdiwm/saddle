@@ -99,6 +99,7 @@ async fn main() -> Result<()> {
                     libinput_signal_handle.send(LibinputSignal::Resume)?;
                 } else {
                     info!("Session became inactive");
+                    seat.release_session().await?;
                     *has_control.write().unwrap() = false;
                     libinput_signal_handle.send(LibinputSignal::Suspend)?;
                 }
@@ -110,44 +111,28 @@ async fn main() -> Result<()> {
 
     let mut stream = UnboundedReceiverStream::new(rx);
 
-    // We can spawn a task no problem despite libinput being neither sync nor send
-    let handle = tokio::spawn(async move {
-        while let Some(event) = stream.try_next().await? {
-            println!(
-                "Got \"{}\" event from \"{}\"",
-                event.name, event.device_name
-            );
+    while let Some(event) = stream.try_next().await? {
+        println!(
+            "Got \"{}\" event from \"{}\"",
+            event.name, event.device_name
+        );
 
-            match event.event_type {
-                EventType::Keyboard => {
-                    // Check if we have control
-                    if *has_control.read().unwrap() {
-                        info!("Keyboard event received, switching to VT 2");
+        match event.event_type {
+            EventType::Keyboard => {
+                // Check if we have control
+                if *has_control.read().unwrap() {
+                    info!("Keyboard event received, switching to VT 2");
 
-                        // Switch to VT 2
-                        if let Err(e) = seat.switch_session(2).await {
-                            error!("Failed to switch to VT 2: {}", e);
-                        } else {
-                            // Immediately release control after successful switch
-                            if let Err(e) = seat.release_session().await {
-                                error!("Failed to release control after switch: {}", e);
-                            } else {
-                                info!("Released control after switching to VT 2");
-                                *has_control.write().unwrap() = false;
-                            }
-                        }
-                    } else {
-                        debug!("Keyboard event received but we don't have control");
+                    if let Err(e) = seat.switch_session(2).await {
+                        error!("Failed to switch to VT 2: {}", e);
                     }
+                } else {
+                    debug!("Keyboard event received but we don't have control");
                 }
-                _ => {}
             }
+            _ => {}
         }
-
-        anyhow::Ok(())
-    });
-
-    handle.await??;
+    }
 
     libinput_signal_handle.send(LibinputSignal::Shutdown)?;
 
