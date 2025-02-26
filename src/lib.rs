@@ -1,7 +1,9 @@
 use std::{
-    ffi::CString,
+    ffi::{CStr, CString, OsStr, OsString},
+    fs::File,
     io,
     os::fd::{BorrowedFd, OwnedFd},
+    path::{Path, PathBuf},
 };
 
 use login1::{manager::ManagerProxy, seat::SeatProxy, session::SessionProxy};
@@ -62,7 +64,7 @@ impl Seat {
         })
     }
 
-    pub async fn active_stream(&self) -> impl Stream<Item = Result<bool>> + use<> {
+    pub async fn active_stream(&self) -> impl Stream<Item = Result<bool>> {
         let active_changed = self.session.receive_active_changed().await;
 
         active_changed.then(|prop| async move { prop.get().await.map_err(Error::Zbus) })
@@ -112,49 +114,45 @@ pub unsafe trait AsDevice {
     fn as_device(&self) -> Result<(u32, u32)>;
 }
 
-macro_rules! impl_as_device_arg {
-    ($($ty:ident)+) => {
-       $(
+/// Implement AsDevice for a type and a reference to that type using stat()
+macro_rules! impl_as_device_stat {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            // Implement for the type itself
             unsafe impl AsDevice for $ty {
                 fn as_device(&self) -> Result<(u32, u32)> {
                     let stat = fs::stat(self)?;
-
                     Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
                 }
             }
-       )*
-    };
-    ($($ty:ident < $lt:lifetime >)+) => {
-        $(
-             unsafe impl AsDevice for $ty<$lt> {
-                 fn as_device(&self) -> Result<(u32, u32)> {
-                     let stat = fs::stat(self)?;
 
-                     Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
-                 }
-             }
+            // Implement for a reference to the type
+            unsafe impl AsDevice for &$ty {
+                fn as_device(&self) -> Result<(u32, u32)> {
+                    let stat = fs::stat(*self)?;
+                    Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+                }
+            }
         )*
-     };
+    };
 }
 
-macro_rules! impl_as_device_fd {
-    ($($ty:ident)+) => {
+/// Implement AsDevice for a type and a reference to that type using fstat()
+macro_rules! impl_as_device_fstat {
+    ($($ty:ty),* $(,)?) => {
         $(
+            // Implement for the type itself
             unsafe impl AsDevice for $ty {
                 fn as_device(&self) -> Result<(u32, u32)> {
                     let stat = fs::fstat(self)?;
-
                     Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
                 }
             }
-        )*
-    };
-    ($($ty:ident < $lt:lifetime >)+) => {
-        $(
-            unsafe impl AsDevice for $ty<$lt> {
-                fn as_device(&self) -> Result<(u32, u32)> {
-                    let stat = fs::fstat(self)?;
 
+            // Implement for a reference to the type
+            unsafe impl AsDevice for &$ty {
+                fn as_device(&self) -> Result<(u32, u32)> {
+                    let stat = fs::fstat(*self)?;
                     Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
                 }
             }
@@ -162,5 +160,21 @@ macro_rules! impl_as_device_fd {
     };
 }
 
-impl_as_device_arg!(CString);
-impl_as_device_fd!(BorrowedFd<'_>);
+// Implement for path-like types
+impl_as_device_stat! {
+    CString,
+    CStr,
+    PathBuf,
+    Path,
+    String,
+    str,
+    OsString,
+    OsStr
+}
+
+// Implement for file descriptor types
+impl_as_device_fstat! {
+    OwnedFd,
+    BorrowedFd<'_>,
+    File
+}
