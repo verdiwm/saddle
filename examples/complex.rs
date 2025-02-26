@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
 
     let seat = Seat::new().await?;
 
-    let has_control = Arc::new(RwLock::new(true));
+    let has_control = Arc::new(RwLock::new(false));
 
     info!("Spawning channels");
 

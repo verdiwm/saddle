@@ -65,9 +65,12 @@ impl Seat {
     }
 
     pub async fn active_stream(&self) -> impl Stream<Item = Result<bool>> {
-        let active_changed = self.session.receive_active_changed().await;
-
-        active_changed.then(|prop| async move { prop.get().await.map_err(Error::Zbus) })
+        tokio_stream::once(Ok(true)).chain(
+            self.session
+                .receive_active_changed()
+                .await
+                .then(|prop| async move { prop.get().await.map_err(Error::Zbus) }),
+        )
     }
 
     pub fn seat_name(&self) -> &str {
