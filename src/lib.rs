@@ -1,8 +1,7 @@
 use std::{
     ffi::CString,
     io,
-    os::fd::{AsFd, BorrowedFd, OwnedFd},
-    path::Path,
+    os::fd::{BorrowedFd, OwnedFd},
 };
 
 use futures_core::Stream;
@@ -114,18 +113,55 @@ pub unsafe trait AsDevice {
     fn as_device(&self) -> Result<(u32, u32)>;
 }
 
-unsafe impl AsDevice for CString {
-    fn as_device(&self) -> Result<(u32, u32)> {
-        let stat = fs::stat(self)?;
+macro_rules! impl_as_device_arg {
+    ($($ty:ident)+) => {
+       $(
+            unsafe impl AsDevice for $ty {
+                fn as_device(&self) -> Result<(u32, u32)> {
+                    let stat = fs::stat(self)?;
 
-        Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
-    }
+                    Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+                }
+            }
+       )*
+    };
+    ($($ty:ident < $lt:lifetime >)+) => {
+        $(
+             unsafe impl AsDevice for $ty<$lt> {
+                 fn as_device(&self) -> Result<(u32, u32)> {
+                     let stat = fs::stat(self)?;
+
+                     Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+                 }
+             }
+        )*
+     };
 }
 
-unsafe impl AsDevice for BorrowedFd<'_> {
-    fn as_device(&self) -> Result<(u32, u32)> {
-        let stat = fs::fstat(self)?;
+macro_rules! impl_as_device_fd {
+    ($($ty:ident)+) => {
+        $(
+            unsafe impl AsDevice for $ty {
+                fn as_device(&self) -> Result<(u32, u32)> {
+                    let stat = fs::fstat(self)?;
 
-        Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
-    }
+                    Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+                }
+            }
+        )*
+    };
+    ($($ty:ident < $lt:lifetime >)+) => {
+        $(
+            unsafe impl AsDevice for $ty<$lt> {
+                fn as_device(&self) -> Result<(u32, u32)> {
+                    let stat = fs::fstat(self)?;
+
+                    Ok((fs::major(stat.st_rdev), fs::minor(stat.st_rdev)))
+                }
+            }
+        )*
+    };
 }
+
+impl_as_device_arg!(CString);
+impl_as_device_fd!(BorrowedFd<'_>);
