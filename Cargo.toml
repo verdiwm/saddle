@@ -11,16 +11,22 @@ repository = "https://github.com/verdiwm/saddle"
 include = ["src/**/*.rs", "README.md", "LICENSE"]
 
 [dependencies]
-futures-util = { version = "0.3.30", default-features = false }
-reconciler = "0.0.3"
+futures-core = "0.3.31"
 thiserror = "2.0.11"
+tokio = { version = "1.42.0", features = ["signal"] }
+tokio-stream = { version = "0.1.17", default-features = false }
+tracing = "0.1.41"
 zbus = { version = "5.2.0", default-features = false, features = ["tokio"] }
 
 [dev-dependencies]
 anyhow = "1.0.94"
 crossbeam = "0.8.4"
 rustix = { version = "0.38.42", features = ["process", "fs"] }
-tokio = { version = "1.42.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.42.0", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+] }
 tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
     "tracing-log",
@@ -29,7 +35,6 @@ colpetto = { version = "0.4.0", features = ["tokio"] }
 tokio-stream = "0.1.17"
 tracing = "0.1.41"
 wgpu = "24.0.0"
-raw-window-handle = "0.6.2"
 diretto = "0.0.6"
 
 [patch.crates-io]

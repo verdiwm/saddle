@@ -486,31 +486,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "futures-sink"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e575fab7d1e0dcb8d0c7bcf9a63ee213816ab51902e6d244a95819acacf1d4f7"
-
-[[package]]
-name = "futures-task"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f90f7dce0722e95104fcb095585910c0977252f286e354b5e3bd38902cd99988"
-
-[[package]]
-name = "futures-util"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fa08315bb612088cc391249efdc3bc77536f16c91f6cf495e6fbe85b20a4a81"
-dependencies = [
- "futures-core",
- "futures-sink",
- "futures-task",
- "pin-project-lite",
- "pin-utils",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -811,7 +786,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -962,16 +937,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 
 [[package]]
-name = "pin-utils"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
-
-[[package]]
 name = "pkg-config"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
+
+[[package]]
+name = "portable-atomic"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "350e9b48cbc6b0e028b0473b114454c6316e57336ee184ceab6e53f72c178b3e"
 
 [[package]]
 name = "presser"
@@ -1023,19 +998,6 @@ name = "raw-window-handle"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
-
-[[package]]
-name = "reconciler"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49244a4b2ff717268816108ba5f38557063994f9757b61e6e3cdb8d2cb81b564"
-dependencies = [
- "futures-util",
- "pin-project-lite",
- "tokio",
- "tokio-stream",
- "tokio-util",
-]
 
 [[package]]
 name = "redox_syscall"
@@ -1135,9 +1097,7 @@ dependencies = [
  "colpetto",
  "crossbeam",
  "diretto",
- "futures-util",
- "raw-window-handle",
- "reconciler",
+ "futures-core",
  "rustix",
  "thiserror 2.0.11",
  "tokio",
@@ -1396,19 +1356,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-util"
-version = "0.7.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7fcaa8d55a2bdd6b83ace262b016eca0d79ee02818c5c1bcdf0305114081078"
-dependencies = [
- "bytes",
- "futures-core",
- "futures-sink",
- "pin-project-lite",
- "tokio",
-]
-
-[[package]]
 name = "toml_datetime"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1620,7 +1567,7 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "arrayvec",
  "bitflags 2.8.0",
@@ -1631,6 +1578,7 @@ dependencies = [
  "log",
  "naga",
  "parking_lot",
+ "portable-atomic",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -1646,7 +1594,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -1659,6 +1607,7 @@ dependencies = [
  "naga",
  "once_cell",
  "parking_lot",
+ "portable-atomic",
  "profiling",
  "raw-window-handle",
  "rustc-hash",
@@ -1674,7 +1623,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-apple"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1682,7 +1631,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-emscripten"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1690,7 +1639,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-windows-linux-android"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1698,7 +1647,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1727,6 +1676,7 @@ dependencies = [
  "once_cell",
  "ordered-float",
  "parking_lot",
+ "portable-atomic",
  "profiling",
  "range-alloc",
  "raw-window-handle",
@@ -1743,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "24.0.0"
-source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#dc67132f3ed47695bb45081260c3b937711f1e35"
+source = "git+https://github.com/verdiwm/wgpu?branch=drm-support-v2#e4dab9e48fd617b0864ac8f77d78f4de53b801bb"
 dependencies = [
  "bitflags 2.8.0",
  "js-sys",
