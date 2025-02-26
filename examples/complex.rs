@@ -1,20 +1,19 @@
 use std::{
     ffi::{CString, c_int},
     os::fd::{BorrowedFd, IntoRawFd},
+    sync::mpsc,
     sync::{Arc, RwLock},
 };
 
 use anyhow::Result;
 use colpetto::{Libinput, event::AsRawEvent};
-use crossbeam::channel::Receiver;
 use saddle::Seat;
 use tokio::{
     pin,
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{self as tokio_mpsc},
     task::LocalSet,
 };
-use tokio_stream::StreamExt;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
 use tracing::{debug, error, info};
 
 #[tokio::main]
@@ -30,8 +29,8 @@ async fn main() -> Result<()> {
     let (ask_sx, respond_rx) = {
         let seat = seat.clone();
 
-        let (ask_sx, ask_rx) = mpsc::unbounded_channel::<CString>();
-        let (respond_sx, respond_rx) = crossbeam::channel::unbounded::<c_int>();
+        let (ask_sx, ask_rx) = tokio_mpsc::unbounded_channel::<CString>();
+        let (respond_sx, respond_rx) = mpsc::channel::<c_int>();
 
         let mut ask_rx = UnboundedReceiverStream::new(ask_rx);
 
@@ -57,7 +56,7 @@ async fn main() -> Result<()> {
     let close_sx = {
         let seat = seat.clone();
 
-        let (close_sx, close_rx) = mpsc::unbounded_channel::<c_int>();
+        let (close_sx, close_rx) = tokio_mpsc::unbounded_channel::<c_int>();
 
         let mut close_rx = UnboundedReceiverStream::new(close_rx);
 
@@ -169,15 +168,15 @@ enum LibinputSignal {
 
 fn spawn_libinput_task(
     seat_name: CString,
-    ask_sx: UnboundedSender<CString>,
-    close_sx: UnboundedSender<i32>,
-    respond_rx: Receiver<i32>,
+    ask_sx: tokio_mpsc::UnboundedSender<CString>,
+    close_sx: tokio_mpsc::UnboundedSender<i32>,
+    respond_rx: mpsc::Receiver<i32>,
 ) -> Result<(
-    UnboundedReceiver<Result<Event, colpetto::Error>>,
-    UnboundedSender<LibinputSignal>,
+    tokio_mpsc::UnboundedReceiver<Result<Event, colpetto::Error>>,
+    tokio_mpsc::UnboundedSender<LibinputSignal>,
 )> {
-    let (event_sx, event_rx) = mpsc::unbounded_channel();
-    let (signal_sx, mut signal_rx) = mpsc::unbounded_channel();
+    let (event_sx, event_rx) = tokio_mpsc::unbounded_channel();
+    let (signal_sx, mut signal_rx) = tokio_mpsc::unbounded_channel();
 
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
