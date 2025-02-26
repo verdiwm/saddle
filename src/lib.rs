@@ -4,10 +4,9 @@ use std::{
     os::fd::{BorrowedFd, OwnedFd},
 };
 
-use futures_core::Stream;
 use login1::{manager::ManagerProxy, seat::SeatProxy, session::SessionProxy};
 use rustix::fs;
-use tokio_stream::StreamExt;
+use tokio_stream::{Stream, StreamExt};
 use tracing::debug;
 use zbus::Connection;
 

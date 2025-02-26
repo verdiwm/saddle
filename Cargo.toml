@@ -11,7 +11,6 @@ repository = "https://github.com/verdiwm/saddle"
 include = ["src/**/*.rs", "README.md", "LICENSE"]
 
 [dependencies]
-futures-core = "0.3.31"
 rustix = { version = "0.38.42", features = ["fs"] }
 thiserror = "2.0.11"
 tokio = { version = "1.42.0", features = ["signal"] }
@@ -22,7 +21,6 @@ zbus = { version = "5.2.0", default-features = false, features = ["tokio"] }
 [dev-dependencies]
 anyhow = "1.0.94"
 crossbeam = "0.8.4"
-rustix = { version = "0.38.42", features = ["process", "fs"] }
 tokio = { version = "1.42.0", features = [
     "macros",
     "rt-multi-thread",
@@ -33,11 +31,3 @@ tracing-subscriber = { version = "0.3.19", features = [
     "tracing-log",
 ] }
 colpetto = { version = "0.4.0", features = ["tokio"] }
-tokio-stream = "0.1.17"
-tracing = "0.1.41"
-wgpu = "24.0.0"
-diretto = "0.0.6"
-
-[patch.crates-io]
-wgpu = { git = "https://github.com/verdiwm/wgpu", branch = "drm-support-v2" }
-# colpetto = { path = "../colpetto" }
