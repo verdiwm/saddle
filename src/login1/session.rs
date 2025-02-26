@@ -70,7 +70,7 @@ pub trait Session {
     /// ResumeDevice signal
     #[zbus(signal)]
     fn resume_device(&self, major: u32, minor: u32, fd: zbus::zvariant::Fd<'_>)
-        -> zbus::Result<()>;
+    -> zbus::Result<()>;
 
     /// Unlock signal
     #[zbus(signal)]

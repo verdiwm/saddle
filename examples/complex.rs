@@ -1,11 +1,11 @@
 use std::{
-    ffi::{c_int, CString},
+    ffi::{CString, c_int},
     os::fd::{BorrowedFd, IntoRawFd},
     sync::{Arc, RwLock},
 };
 
 use anyhow::Result;
-use colpetto::{event::AsRawEvent, Libinput};
+use colpetto::{Libinput, event::AsRawEvent};
 use crossbeam::channel::Receiver;
 use saddle::Seat;
 use tokio::{
@@ -13,8 +13,8 @@ use tokio::{
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     task::LocalSet,
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{debug, error, info};
 
 #[tokio::main]
