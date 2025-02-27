@@ -215,7 +215,10 @@ async fn main() -> Result<()> {
                         if let Some(vt) = key_map.get_vt(key) {
                             if *has_control.read().await {
                                 info!("Ctrl+Alt+F{} pressed, switching to VT {}", vt, vt);
-                                switch(&seat, vt).await;
+
+                                if let Err(e) = seat.switch_session(vt).await {
+                                    error!("Failed to switch to VT 2: {}", e);
+                                }
                             } else {
                                 debug!("Not switching VT - session inactive");
                             }
@@ -228,14 +231,6 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-async fn switch(seat: &Seat, session: u32) {
-    info!("Keyboard event received, switching to VT {session}");
-
-    if let Err(e) = seat.switch_session(session).await {
-        error!("Failed to switch to VT 2: {}", e);
-    }
 }
 
 #[derive(Debug)]
