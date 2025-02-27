@@ -1,27 +1,32 @@
 # Saddle
 
-**Saddle** is an asynchronous library designed to simplify the management of
-user seats in a Linux environment. It provides a easy to use interface for
-obtaining and releasing user sessions, which can be utilized to open and close
-devices securely.
+**Saddle** is an asynchronous Rust library designed to simplify the management
+of user seats in a Linux environment. It provides a Rust-native, future-based
+API for obtaining and releasing user sessions, opening and closing devices
+securely, and monitoring session state changes.
 
-## Current Features
+## Features
 
-- **Session Management:** Obtain, release and pause user sessions
-- **Device Management:** Open and close devices tied to a user session
-- **VT Switching:** Support for switching between virtual terminals
+- **Async-first API**: Built with Tokio and designed for asynchronous
+  applications
+- **Session Management**: Obtain, release, and monitor user sessions
+- **Device Access**: Open and close devices securely without requiring root
+  privileges
+- **VT Switching**: Support for switching between virtual terminals
+- **Event Streams**: Monitor session state changes with async streams
 
-## Supported Backend
+## Supported Backends
 
-At present, **Saddle** leverages the freedesktop `login1` interface as its
-backend, which is compatible with both `logind` and `elogind` systems.
+Currently, Saddle uses the freedesktop `login1` interface as its backend, which
+is compatible with both `systemd-logind` and `elogind` systems.
 
-In the future, we plan to extend support to the `seatd` IPC interface,
+Future releases will include support for `seatd` IPC interface.
 
-## Example usage
+## Examples
 
-While this crate is still in development you can find some horrible code you
-shouldn't actually use [here](examples/spaghetti.rs)
+For a comprehensive example demonstrating how to use Saddle with libinput for
+handling input devices and implementing VT switching, see the
+[VT switcher example](examples/complex.rs).
 
 ## License
 
