@@ -214,10 +214,10 @@ async fn main() -> Result<()> {
                     if modifier_state.read().await.is_ctrl_alt_pressed() {
                         if let Some(vt) = key_map.get_vt(key) {
                             if *has_control.read().await {
-                                info!("Ctrl+Alt+F{} pressed, switching to VT {}", vt, vt);
+                                info!("Ctrl+Alt+F{vt} pressed, switching to VT {vt}");
 
                                 if let Err(e) = seat.switch_session(vt).await {
-                                    error!("Failed to switch to VT 2: {}", e);
+                                    error!("Failed to switch to VT {vt}: {e}");
                                 }
                             } else {
                                 debug!("Not switching VT - session inactive");
