@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     ffi::{CString, c_int},
     os::fd::{BorrowedFd, IntoRawFd},
     sync::{Arc, mpsc},
@@ -7,9 +8,12 @@ use std::{
 use anyhow::Result;
 use colpetto::{
     Libinput,
-    event::{AsRawEvent, KeyboardEvent},
+    event::{AsRawEvent, KeyState, KeyboardEvent},
 };
-use input_linux_sys::{KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_ESC};
+use input_linux_sys::{
+    KEY_ESC, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_LEFTALT,
+    KEY_LEFTCTRL, KEY_RIGHTALT, KEY_RIGHTCTRL,
+};
 use saddle::Seat;
 use tokio::{
     pin,
@@ -21,6 +25,71 @@ use tokio::{
 };
 use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
 use tracing::{debug, error, info};
+
+/// Maps function keys to VT numbers
+struct KeyMap {
+    mappings: HashMap<u32, u32>,
+}
+
+impl KeyMap {
+    fn new() -> Self {
+        let mut mappings = HashMap::new();
+
+        // Function keys mapped to respective VTs
+        mappings.insert(KEY_F1 as u32, 1);
+        mappings.insert(KEY_F2 as u32, 2);
+        mappings.insert(KEY_F3 as u32, 3);
+        mappings.insert(KEY_F4 as u32, 4);
+        mappings.insert(KEY_F5 as u32, 5);
+        mappings.insert(KEY_F6 as u32, 6);
+        mappings.insert(KEY_F7 as u32, 7);
+        mappings.insert(KEY_F8 as u32, 8);
+        mappings.insert(KEY_F9 as u32, 9);
+
+        Self { mappings }
+    }
+
+    fn get_vt(&self, key: u32) -> Option<u32> {
+        self.mappings.get(&key).copied()
+    }
+}
+
+struct ModifierState {
+    pressed_keys: HashSet<u32>,
+}
+
+impl ModifierState {
+    fn new() -> Self {
+        Self {
+            pressed_keys: HashSet::new(),
+        }
+    }
+
+    fn update(&mut self, key: u32, state: KeyState) {
+        match state {
+            KeyState::Pressed => {
+                self.pressed_keys.insert(key);
+            }
+            KeyState::Released => {
+                self.pressed_keys.remove(&key);
+            }
+        }
+    }
+
+    fn is_ctrl_pressed(&self) -> bool {
+        self.pressed_keys.contains(&(KEY_LEFTCTRL as u32))
+            || self.pressed_keys.contains(&(KEY_RIGHTCTRL as u32))
+    }
+
+    fn is_alt_pressed(&self) -> bool {
+        self.pressed_keys.contains(&(KEY_LEFTALT as u32))
+            || self.pressed_keys.contains(&(KEY_RIGHTALT as u32))
+    }
+
+    fn is_ctrl_alt_pressed(&self) -> bool {
+        self.is_ctrl_pressed() && self.is_alt_pressed()
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -86,10 +155,14 @@ async fn main() -> Result<()> {
         respond_rx,
     )?;
 
+    let key_map = KeyMap::new();
+    let modifier_state = Arc::new(RwLock::new(ModifierState::new()));
+
     tokio::spawn({
         let seat = seat.clone();
         let has_control = has_control.clone();
         let libinput_signal_handle = libinput_signal_handle.clone();
+        let modifier_state = modifier_state.clone();
 
         async move {
             let stream = seat.active_stream().await;
@@ -101,6 +174,10 @@ async fn main() -> Result<()> {
                     info!("Session became active, taking control");
                     seat.aquire_session().await?;
                     *has_control.write().await = true;
+
+                    // Reset modifier state when session becomes active to avoid stuck keys
+                    *modifier_state.write().await = ModifierState::new();
+
                     libinput_signal_handle.send(LibinputSignal::Resume)?;
                 } else {
                     info!("Session became inactive");
@@ -123,27 +200,27 @@ async fn main() -> Result<()> {
         );
 
         match event.event_type {
-            EventType::Keyboard(key) => {
-                // Check if we have control
-                if *has_control.read().await {
-                    match key as c_int {
-                        KEY_1 => switch(&seat, 1).await?,
-                        KEY_2 => switch(&seat, 2).await?,
-                        KEY_3 => switch(&seat, 3).await?,
-                        KEY_4 => switch(&seat, 4).await?,
-                        KEY_5 => switch(&seat, 5).await?,
-                        KEY_6 => switch(&seat, 6).await?,
-                        KEY_7 => switch(&seat, 7).await?,
-                        KEY_8 => switch(&seat, 8).await?,
-                        KEY_9 => switch(&seat, 9).await?,
-                        KEY_ESC => {
-                            info!("Exiting...");
-                            libinput_signal_handle.send(LibinputSignal::Shutdown)?;
-                        }
-                        _ => {}
+            EventType::Keyboard { key, state } => {
+                modifier_state.write().await.update(key, state);
+
+                if state == KeyState::Pressed {
+                    // Handle ESC for exit
+                    if key as i32 == KEY_ESC {
+                        info!("ESC pressed, exiting...");
+                        libinput_signal_handle.send(LibinputSignal::Shutdown)?;
                     }
-                } else {
-                    debug!("Keyboard event received but we don't have control");
+
+                    // Only process function keys when Ctrl+Alt are held
+                    if modifier_state.read().await.is_ctrl_alt_pressed() {
+                        if let Some(vt) = key_map.get_vt(key) {
+                            if *has_control.read().await {
+                                info!("Ctrl+Alt+F{} pressed, switching to VT {}", vt, vt);
+                                switch(&seat, vt).await;
+                            } else {
+                                debug!("Not switching VT - session inactive");
+                            }
+                        }
+                    }
                 }
             }
             _ => {}
@@ -153,14 +230,12 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn switch(seat: &Seat, session: u32) -> Result<()> {
+async fn switch(seat: &Seat, session: u32) {
     info!("Keyboard event received, switching to VT {session}");
 
     if let Err(e) = seat.switch_session(session).await {
         error!("Failed to switch to VT 2: {}", e);
     }
-
-    Ok(())
 }
 
 #[derive(Debug)]
@@ -172,16 +247,17 @@ struct Event {
 
 #[derive(Debug)]
 enum EventType {
-    Keyboard(u32),
+    Keyboard { key: u32, state: KeyState },
     Unknown,
 }
 
 impl From<&colpetto::Event> for EventType {
     fn from(value: &colpetto::Event) -> Self {
         match value {
-            colpetto::Event::Keyboard(KeyboardEvent::Key(event)) => {
-                EventType::Keyboard(event.key())
-            }
+            colpetto::Event::Keyboard(KeyboardEvent::Key(event)) => EventType::Keyboard {
+                key: event.key(),
+                state: event.key_state(),
+            },
             _ => EventType::Unknown,
         }
     }
