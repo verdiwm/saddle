@@ -1,11 +1,8 @@
-use std::{
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use saddle::Seat;
-use tokio::{pin, time::sleep};
+use tokio::{pin, sync::RwLock, time::sleep};
 use tokio_stream::StreamExt;
 use tracing::info;
 
@@ -30,11 +27,11 @@ async fn main() -> Result<()> {
                 if is_active {
                     info!("Session became active, taking control");
                     seat.aquire_session().await?;
-                    *has_control.write().unwrap() = true;
+                    *has_control.write().await = true;
                 } else {
                     info!("Session became inactive");
                     seat.release_session().await?;
-                    *has_control.write().unwrap() = false;
+                    *has_control.write().await = false;
                 }
             }
 

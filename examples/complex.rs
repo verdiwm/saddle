@@ -1,8 +1,7 @@
 use std::{
     ffi::{CString, c_int},
     os::fd::{BorrowedFd, IntoRawFd},
-    sync::mpsc,
-    sync::{Arc, RwLock},
+    sync::{Arc, mpsc},
 };
 
 use anyhow::Result;
@@ -14,7 +13,10 @@ use input_linux_sys::{KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KE
 use saddle::Seat;
 use tokio::{
     pin,
-    sync::mpsc::{self as tokio_mpsc},
+    sync::{
+        RwLock,
+        mpsc::{self as tokio_mpsc},
+    },
     task::LocalSet,
 };
 use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
@@ -98,12 +100,12 @@ async fn main() -> Result<()> {
                 if is_active {
                     info!("Session became active, taking control");
                     seat.aquire_session().await?;
-                    *has_control.write().unwrap() = true;
+                    *has_control.write().await = true;
                     libinput_signal_handle.send(LibinputSignal::Resume)?;
                 } else {
                     info!("Session became inactive");
                     seat.release_session().await?;
-                    *has_control.write().unwrap() = false;
+                    *has_control.write().await = false;
                     libinput_signal_handle.send(LibinputSignal::Suspend)?;
                 }
             }
@@ -123,7 +125,7 @@ async fn main() -> Result<()> {
         match event.event_type {
             EventType::Keyboard(key) => {
                 // Check if we have control
-                if *has_control.read().unwrap() {
+                if *has_control.read().await {
                     match key as c_int {
                         KEY_1 => switch(&seat, 1).await?,
                         KEY_2 => switch(&seat, 2).await?,
