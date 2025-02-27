@@ -24,7 +24,7 @@ use tokio::{
     task::LocalSet,
 };
 use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 
 /// Maps function keys to VT numbers
 struct KeyMap {
@@ -194,7 +194,7 @@ async fn main() -> Result<()> {
     let mut stream = UnboundedReceiverStream::new(rx);
 
     while let Some(event) = stream.try_next().await? {
-        println!(
+        trace!(
             "Got \"{}\" event from \"{}\"",
             event.name, event.device_name
         );
