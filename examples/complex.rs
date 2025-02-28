@@ -8,7 +8,10 @@ use std::{
 use anyhow::Result;
 use colpetto::{
     event::KeyState,
-    helper::{EventType, Handle as LibinputHandle},
+    helper::{
+        Handle as LibinputHandle,
+        event::{EventType, KeyboardEvent},
+    },
 };
 use input_linux_sys::{
     KEY_ESC, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_LEFTALT,
@@ -17,7 +20,7 @@ use input_linux_sys::{
 use saddle::Seat;
 use tokio::{pin, sync::RwLock};
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
 
 /// Maps function keys to VT numbers
 struct KeyMap {
@@ -158,20 +161,15 @@ async fn main() -> Result<()> {
     });
 
     while let Some(event) = event_stream.try_next().await? {
-        trace!(
-            "Got \"{}\" event from \"{}\"",
-            event.name, event.device_name
-        );
-
         match event.event_type {
-            EventType::Keyboard { key, state } => {
+            EventType::Keyboard(KeyboardEvent::Key { key, state, .. }) => {
                 modifier_state.write().await.update(key, state);
 
                 if state == KeyState::Pressed {
                     // Handle ESC for exit
                     if key as i32 == KEY_ESC {
                         info!("ESC pressed, exiting...");
-                        libinput_handle.shutdown()?;
+                        libinput_handle.shutdown();
                     }
 
                     // Only process function keys when Ctrl+Alt are held
