@@ -26,7 +26,7 @@ Future releases will include support for `seatd` IPC interface.
 
 For a comprehensive example demonstrating how to use Saddle with libinput for
 handling input devices and implementing VT switching, see the
-[VT switcher example](examples/complex.rs).
+[VT switcher example](examples/switcher.rs).
 
 ## License
 
