@@ -1,29 +1,22 @@
 use std::{
     collections::{HashMap, HashSet},
-    ffi::{CString, c_int},
+    ffi::CString,
     os::fd::{BorrowedFd, IntoRawFd},
-    sync::{Arc, mpsc},
+    sync::Arc,
 };
 
 use anyhow::Result;
 use colpetto::{
-    Libinput,
-    event::{AsRawEvent, KeyState, KeyboardEvent},
+    event::KeyState,
+    helper::{EventType, Handle as LibinputHandle},
 };
 use input_linux_sys::{
     KEY_ESC, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_LEFTALT,
     KEY_LEFTCTRL, KEY_RIGHTALT, KEY_RIGHTCTRL,
 };
 use saddle::Seat;
-use tokio::{
-    pin,
-    sync::{
-        RwLock,
-        mpsc::{self as tokio_mpsc},
-    },
-    task::LocalSet,
-};
-use tokio_stream::{StreamExt, wrappers::UnboundedReceiverStream};
+use tokio::{pin, sync::RwLock};
+use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
 /// Maps function keys to VT numbers
@@ -96,64 +89,38 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let seat = Seat::new().await?;
+    let seat_name = CString::new(seat.seat_name()).expect("Invalid seat name");
 
     let has_control = Arc::new(RwLock::new(false));
 
-    info!("Spawning channels");
+    let (libinput_handle, mut event_stream) = {
+        let open_seat = seat.clone();
+        let close_seat = seat.clone();
 
-    let (ask_sx, respond_rx) = {
-        let seat = seat.clone();
+        LibinputHandle::new(
+            move |path| {
+                let seat = open_seat.clone();
 
-        let (ask_sx, ask_rx) = tokio_mpsc::unbounded_channel::<CString>();
-        let (respond_sx, respond_rx) = mpsc::channel::<c_int>();
-
-        let mut ask_rx = UnboundedReceiverStream::new(ask_rx);
-
-        tokio::spawn(async move {
-            while let Some(path) = ask_rx.next().await {
-                match seat.open_device(path).await {
-                    Ok(fd) => {
-                        respond_sx.send(fd.into_raw_fd())?;
-                    }
-                    Err(err) => {
-                        error!("Failed to open device: {err}");
-                        respond_sx.send(-1)?
+                async move {
+                    match seat.open_device(path).await {
+                        Ok(fd) => fd.into_raw_fd(),
+                        Err(err) => {
+                            error!("Failed to open device: {err}");
+                            -1
+                        }
                     }
                 }
-            }
+            },
+            move |fd| {
+                let seat = close_seat.clone();
 
-            anyhow::Ok(())
-        });
-
-        (ask_sx, respond_rx)
+                async move {
+                    let _ = seat.close_device(unsafe { BorrowedFd::borrow_raw(fd) });
+                }
+            },
+            seat_name,
+        )?
     };
-
-    let close_sx = {
-        let seat = seat.clone();
-
-        let (close_sx, close_rx) = tokio_mpsc::unbounded_channel::<c_int>();
-
-        let mut close_rx = UnboundedReceiverStream::new(close_rx);
-
-        tokio::spawn(async move {
-            while let Some(fd) = close_rx.next().await {
-                let _ = seat
-                    .close_device(unsafe { BorrowedFd::borrow_raw(fd) })
-                    .await;
-            }
-
-            anyhow::Ok(())
-        });
-
-        close_sx
-    };
-
-    let (rx, libinput_signal_handle) = spawn_libinput_task(
-        CString::new(seat.seat_name()).expect("Invalid seat name"),
-        ask_sx,
-        close_sx,
-        respond_rx,
-    )?;
 
     let key_map = KeyMap::new();
     let modifier_state = Arc::new(RwLock::new(ModifierState::new()));
@@ -161,7 +128,7 @@ async fn main() -> Result<()> {
     tokio::spawn({
         let seat = seat.clone();
         let has_control = has_control.clone();
-        let libinput_signal_handle = libinput_signal_handle.clone();
+        let libinput_handle = libinput_handle.clone();
         let modifier_state = modifier_state.clone();
 
         async move {
@@ -177,13 +144,12 @@ async fn main() -> Result<()> {
 
                     // Reset modifier state when session becomes active to avoid stuck keys
                     *modifier_state.write().await = ModifierState::new();
-
-                    libinput_signal_handle.send(LibinputSignal::Resume)?;
+                    libinput_handle.resume()?;
                 } else {
                     info!("Session became inactive");
                     seat.release_session().await?;
                     *has_control.write().await = false;
-                    libinput_signal_handle.send(LibinputSignal::Suspend)?;
+                    libinput_handle.suspend()?;
                 }
             }
 
@@ -191,9 +157,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let mut stream = UnboundedReceiverStream::new(rx);
-
-    while let Some(event) = stream.try_next().await? {
+    while let Some(event) = event_stream.try_next().await? {
         trace!(
             "Got \"{}\" event from \"{}\"",
             event.name, event.device_name
@@ -207,7 +171,7 @@ async fn main() -> Result<()> {
                     // Handle ESC for exit
                     if key as i32 == KEY_ESC {
                         info!("ESC pressed, exiting...");
-                        libinput_signal_handle.send(LibinputSignal::Shutdown)?;
+                        libinput_handle.shutdown()?;
                     }
 
                     // Only process function keys when Ctrl+Alt are held
@@ -231,109 +195,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[derive(Debug)]
-struct Event {
-    name: &'static str,
-    event_type: EventType,
-    device_name: String,
-}
-
-#[derive(Debug)]
-enum EventType {
-    Keyboard { key: u32, state: KeyState },
-    Unknown,
-}
-
-impl From<&colpetto::Event> for EventType {
-    fn from(value: &colpetto::Event) -> Self {
-        match value {
-            colpetto::Event::Keyboard(KeyboardEvent::Key(event)) => EventType::Keyboard {
-                key: event.key(),
-                state: event.key_state(),
-            },
-            _ => EventType::Unknown,
-        }
-    }
-}
-
-enum LibinputSignal {
-    Shutdown,
-    Suspend,
-    Resume,
-}
-
-fn spawn_libinput_task(
-    seat_name: CString,
-    ask_sx: tokio_mpsc::UnboundedSender<CString>,
-    close_sx: tokio_mpsc::UnboundedSender<i32>,
-    respond_rx: mpsc::Receiver<i32>,
-) -> Result<(
-    tokio_mpsc::UnboundedReceiver<Result<Event, colpetto::Error>>,
-    tokio_mpsc::UnboundedSender<LibinputSignal>,
-)> {
-    let (event_sx, event_rx) = tokio_mpsc::unbounded_channel();
-    let (signal_sx, mut signal_rx) = tokio_mpsc::unbounded_channel();
-
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-
-    std::thread::spawn(move || {
-        let local = LocalSet::new();
-
-        local.spawn_local(async move {
-            info!("Creating libinput object");
-
-            let mut libinput = Libinput::new(
-                move |path, _| {
-                    debug!("Opening fd at path {}", path.to_string_lossy());
-                    ask_sx.send(path.to_owned()).unwrap();
-                    let res = respond_rx.recv().unwrap();
-
-                    Ok(res)
-                },
-                move |fd| {
-                    debug!("Closing fd: {fd}");
-                    let _ = close_sx.send(fd); // Libinput doesn't care about closing errors
-                },
-            )?;
-
-            libinput.udev_assign_seat(&seat_name)?;
-
-            let mut stream = libinput.event_stream()?;
-
-            loop {
-                tokio::select! {
-                    Some(signal) = signal_rx.recv() => {
-                        match signal {
-                            LibinputSignal::Shutdown => break,
-                            LibinputSignal::Suspend => libinput.suspend(),
-                            LibinputSignal::Resume => libinput.resume().unwrap(), // FIXME: error handling
-                        }
-                    }
-                    Some(res) = stream.next() => {
-                        if event_sx
-                            .send(res.map(|ref event| Event {
-                                name: event.event_type(),
-                                event_type: event.into(),
-                                device_name: event.device().name().to_string_lossy().to_string(),
-                            }))
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
-                    else => break,
-                }
-            }
-
-            anyhow::Ok(())
-        });
-
-        rt.block_on(local);
-    });
-
-    Ok((event_rx, signal_sx))
 }
