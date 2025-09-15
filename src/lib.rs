@@ -181,6 +181,11 @@ impl Seat {
         Ok(())
     }
 
+    /// Gets the number of the current VT session.
+    pub async fn current_session(&self) -> Result<u32> {
+        self.session.vtnr().await.map_err(Error::Zbus)
+    }
+
     /// Opens a device securely, returning a file descriptor.
     ///
     /// This allows non-privileged applications to access devices that
