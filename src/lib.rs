@@ -124,7 +124,7 @@ impl Seat {
     /// When the session becomes inactive, applications should release the session
     /// using `release_session()`. When it becomes active again, they should
     /// re-acquire it using `aquire_session()`.
-    pub async fn active_stream(&self) -> impl Stream<Item = Result<bool>> {
+    pub async fn active_stream(&self) -> impl Stream<Item = Result<bool>> + use<> {
         tokio_stream::once(Ok(true)).chain(
             self.session
                 .receive_active_changed()
